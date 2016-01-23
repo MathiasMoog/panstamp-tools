@@ -3,7 +3,6 @@ package me.legrange.panstamp.gui.view;
 import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Level;
@@ -22,6 +21,7 @@ import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
 import javax.swing.tree.TreePath;
 import me.legrange.panstamp.Endpoint;
+import me.legrange.panstamp.ModemException;
 import me.legrange.panstamp.Network;
 import me.legrange.panstamp.NetworkException;
 import me.legrange.panstamp.PanStamp;
@@ -53,6 +53,8 @@ public class Menus {
                             return getNetworkPopupMenu();
                         case PANSTAMP:
                             return getPanStampPopupMenu(false);
+                        case REGISTER:
+                            return getRegisterPopupMenu();
                         case ENDPOINT:
                             return getEndpointPopupMenu();
                     }
@@ -129,6 +131,12 @@ public class Menus {
 
     private JPopupMenu getPanStampPopupMenu(boolean isMain) {
         JPopupMenu menu = getPanStampMenu().getPopupMenu();
+        menu.addPopupMenuListener(popupDisplayListener);
+        return menu;
+    }
+
+    private JPopupMenu getRegisterPopupMenu() {
+        JPopupMenu menu = getRegisterMenu().getPopupMenu();
         menu.addPopupMenuListener(popupDisplayListener);
         return menu;
     }
@@ -289,6 +297,22 @@ public class Menus {
     }
 
     /**
+     * Determine which register, if any, is currently selected in the tree view.
+     * A register is considered selected if a register node is selected.
+     *
+     * @return The selected register, or null if none is selected.
+     */
+    private Register getSelectedRegister() {
+        NetworkTreeNode node = getSelectedNode();
+        if (node != null) {
+            if (node.getType() == NetworkTreeNode.Type.REGISTER) {
+                return ((RegisterNode) node).getRegister();
+            }
+        }
+        return null;
+    }
+
+    /**
      * Determine which endpoint, if any, is currently selected in the tree view.
      * A endpoint is considered selected if a endpoint node is selected.
      *
@@ -390,7 +414,30 @@ public class Menus {
     }
 
     private List<JComponent> getRegisterMenuItems() {
-        return Collections.EMPTY_LIST;
+    	List<JComponent> items = new LinkedList<>();
+        // Query Item for Register
+        final JMenuItem queryItem = new JMenuItem("Get value (query) ...") {
+            @Override
+            public boolean isEnabled() {
+                Register reg = getSelectedRegister();
+                return (reg != null) && reg.getDevice().getNetwork().isOpen();
+            }
+        };
+        queryItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                Register reg = getSelectedRegister();
+                PanStamp ps = reg.getDevice();
+                try {
+                    ps.sendQueryMessage(reg.getId());
+                } catch (ModemException e1) {
+                    JOptionPane.showMessageDialog(null, String.format("Device %d, query failed", ps.getAddress()),
+                            "Notice", JOptionPane.INFORMATION_MESSAGE);
+                }
+            }
+        });
+        items.add(queryItem);
+        return items;
     }
 
     private List<JComponent> getEndpointMenuItems() {
@@ -410,6 +457,28 @@ public class Menus {
             }
         });
         items.add(setItem);
+        // Query Item for Endpoint (choose the corresponding register)
+        final JMenuItem queryItem = new JMenuItem("Get value (query) ...") {
+            @Override
+            public boolean isEnabled() {
+                Endpoint ep = getSelectedEndpoint();
+                return (ep != null) && ep.getRegister().getDevice().getNetwork().isOpen();
+            }
+        };
+        queryItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                Register reg = getSelectedEndpoint().getRegister();
+                PanStamp ps = reg.getDevice();
+                try {
+                    ps.sendQueryMessage(reg.getId());
+                } catch (ModemException e1) {
+                    JOptionPane.showMessageDialog(null, String.format("Device %d, query failed", ps.getAddress()),
+                            "Notice", JOptionPane.INFORMATION_MESSAGE);
+                }
+            }
+        });
+        items.add(queryItem);
         final JMenuItem graphItem = new JMenuItem("Data graph...") {
             @Override
             public boolean isEnabled() {

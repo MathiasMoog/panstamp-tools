@@ -84,7 +84,7 @@ public class PanStampToolsGUI extends javax.swing.JFrame {
         mainMenu.add(view.getWorldMenu());
         mainMenu.add(view.getGatewayMenu());
         mainMenu.add(view.getDeviceMenu());
-      //  mainMenu.add(view.getRegisterMenu());
+        mainMenu.add(view.getRegisterMenu());
         mainMenu.add(view.getEndpointMenu());
     }
 
